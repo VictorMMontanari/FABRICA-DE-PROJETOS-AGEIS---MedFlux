@@ -1,13 +1,11 @@
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { AuthVisual } from '../components/AuthVisual'
 import { BrandMark } from '../components/BrandMark'
 import { login } from '../services/api'
 import { getStoredSession, saveStoredSession } from '../services/session'
-import { MapContainer, TileLayer } from 'react-leaflet'
-
-const LOGIN_MAP_CENTER: [number, number] = [-22.2167, -49.9501]
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -44,29 +42,7 @@ export function LoginPage() {
   return (
     <div className="login-shell">
       <div className="login-grid">
-        <section className="login-visual" aria-hidden="true">
-          <div className="login-visual__map-frame">
-            <MapContainer
-              center={LOGIN_MAP_CENTER}
-              zoom={13}
-              scrollWheelZoom={false}
-              dragging={false}
-              doubleClickZoom={false}
-              zoomControl={false}
-              attributionControl={false}
-              className="login-visual__map"
-            >
-              <TileLayer
-                attribution='&copy; OpenStreetMap contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-            </MapContainer>
-          </div>
-          <div className="login-visual__overlay">
-            <div className="login-visual__chip">Marília / SP</div>
-            <div className="login-visual__chip login-visual__chip--soft">Mapa de atendimento</div>
-          </div>
-        </section>
+        <AuthVisual />
 
         <section className="login-panel">
           <div className="login-card">
@@ -135,9 +111,9 @@ export function LoginPage() {
 
               <p className="secondary-copy">
                 Ainda não é cadastrado?{' '}
-                <a className="secondary-link" href="/login" onClick={(event) => event.preventDefault()}>
+                <Link className="secondary-link" to="/cadastro">
                   Crie sua Conta
-                </a>
+                </Link>
               </p>
             </form>
           </div>

@@ -5,6 +5,7 @@ import { ChatTriagePage } from './pages/ChatTriagePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { MapPage } from './pages/MapPage'
+import { RegisterPage } from './pages/RegisterPage'
 import './App.css'
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/cadastro" element={<RegisterPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<ShellLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />

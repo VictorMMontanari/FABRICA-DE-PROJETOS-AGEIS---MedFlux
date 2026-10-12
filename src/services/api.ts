@@ -9,6 +9,13 @@ export type LoginResponse = {
   user: UserProfile
 }
 
+export type RegisterRequest = {
+  name: string
+  email: string
+  password: string
+  city: string
+}
+
 export type TriageHistoryItem = {
   id: string
   title: string
@@ -197,6 +204,31 @@ export async function login(email: string, password: string): Promise<LoginRespo
       user: MOCK_USER,
     }),
   )
+}
+
+// Sem fallback mock: um cadastro falso enganaria o usuário. Erros do servidor viram mensagem na tela.
+export async function register(payload: RegisterRequest): Promise<LoginResponse> {
+  let response: Response
+
+  try {
+    response = await fetch(buildUrl('/auth/register'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    throw new Error('Não foi possível conectar ao servidor. Tente novamente.')
+  }
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new Error(data?.message ?? 'Não foi possível criar sua conta agora.')
+  }
+
+  return data as LoginResponse
 }
 
 export async function getTriageHistory(): Promise<TriageHistoryItem[]> {
