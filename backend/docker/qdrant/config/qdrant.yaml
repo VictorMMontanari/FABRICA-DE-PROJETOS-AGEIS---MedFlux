@@ -1,0 +1,17 @@
+# Configuração local do Qdrant (montada como /qdrant/config/production.yaml).
+log_level: INFO
+
+storage:
+  storage_path: ./storage
+  snapshots_path: ./snapshots
+  # Payloads em disco: menos RAM; os vetores continuam em memória para buscas rápidas.
+  on_disk_payload: true
+
+service:
+  host: 0.0.0.0
+  http_port: 6333
+  grpc_port: 6334
+  enable_cors: false
+  # Para produção, defina service.api_key (ou QDRANT__SERVICE__API_KEY) e QDRANT_API_KEY no backend.
+
+telemetry_disabled: true

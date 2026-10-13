@@ -1,5 +1,29 @@
-Flask>=3.1
-Flask-Cors>=6.0
-Flask-SQLAlchemy>=3.1
+# API
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.32
+python-multipart>=0.0.12
+
+# Configuração e validação
+pydantic>=2.9,<3.0
+pydantic-settings>=2.6
+email-validator>=2.2
+python-dotenv>=1.0
+
+# Banco relacional (MySQL 8) e migrations
+SQLAlchemy[asyncio]>=2.0.36,<2.1
+aiomysql>=0.2
+cryptography>=43
+alembic>=1.14
+
+# Segurança
 PyJWT>=2.10
-python-dotenv>=1.1
+bcrypt>=4.2
+
+# Integrações
+httpx>=0.27
+qdrant-client>=1.12
+minio>=7.2
+redis>=5.2
+
+# Agentes (AG2 / AutoGen). Opcional em tempo de execução: AGENT_RUNTIME=ag2
+ag2[openai]>=0.9
