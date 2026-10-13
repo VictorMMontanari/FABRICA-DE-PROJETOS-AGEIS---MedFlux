@@ -103,3 +103,26 @@ async def test_request_id_and_cors_headers(client: httpx.AsyncClient) -> None:
     health = await client.get("/healthz", headers={"X-Request-ID": "abc123"})
     assert health.json() == {"status": "ok"}
     assert health.headers["x-request-id"] == "abc123"
+
+
+async def test_oauth2_token_endpoint_used_by_swagger(client: httpx.AsyncClient) -> None:
+    await register(client)
+    ok = await client.post("/api/v1/auth/token", data={"username": "marina.santos@medflux.com", "password": "123456"})
+    assert ok.status_code == 200
+    body = ok.json()
+    assert body["token_type"] == "bearer" and body["access_token"]
+    me = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {body['access_token']}"})
+    assert me.status_code == 200
+
+    wrong = await client.post("/api/v1/auth/token", data={"username": "marina.santos@medflux.com", "password": "x"})
+    assert wrong.status_code == 401
+    not_email = await client.post("/api/v1/auth/token", data={"username": "marina", "password": "123456"})
+    assert not_email.status_code == 401
+
+
+async def test_openapi_exposes_password_flow(client: httpx.AsyncClient) -> None:
+    schema = (await client.get("/openapi.json")).json()
+    flow = schema["components"]["securitySchemes"]["JWT"]["flows"]["password"]
+    assert flow["tokenUrl"] == "/api/v1/auth/token"
+    assert "security" in schema["paths"]["/api/v1/auth/me"]["get"]
+    assert (await client.get("/docs")).status_code == 200

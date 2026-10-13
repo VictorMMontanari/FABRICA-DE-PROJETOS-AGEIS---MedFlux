@@ -50,3 +50,11 @@ class TokenResponse(BaseModel):
     token_type: Literal["bearer"] = "bearer"
     expires_in: int
     user: UserResponse
+
+
+class OAuthTokenResponse(BaseModel):
+    """Resposta padrão OAuth2 (RFC 6749), usada pelo botão Authorize do Swagger."""
+
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int

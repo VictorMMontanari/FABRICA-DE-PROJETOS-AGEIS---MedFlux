@@ -31,6 +31,37 @@ from app.services.ai_service import AIService
 logger = get_logger(__name__)
 
 
+OPENAPI_TAGS = [
+    {"name": "auth", "description": "Cadastro, login e usuário autenticado (JWT)."},
+    {"name": "users", "description": "Perfil do usuário e foto (MinIO)."},
+    {"name": "health units", "description": "Unidades de saúde (UPA/UBS) para o mapa."},
+    {"name": "triage", "description": "Chat de triagem com IA e histórico."},
+    {"name": "agents", "description": "Eventos dos agentes de saúde."},
+    {"name": "vector", "description": "Base de conhecimento e busca vetorial (Qdrant)."},
+    {"name": "files", "description": "Download autenticado de arquivos do usuário."},
+    {"name": "infra", "description": "Liveness e readiness."},
+]
+
+
+def _api_description(settings: Settings) -> str:
+    demo = (
+        "\n\nUsuário de demonstração: **marina.santos@medflux.com** / **123456**."
+        if settings.SEED_DEMO_USER and settings.APP_ENV != "production"
+        else ""
+    )
+    return f"""Backend do MedFlux - Health & Wellness.
+
+### Como testar a autenticação
+1. **Cadastro**: `POST /api/v1/auth/register` → *Try it out* → *Execute* (ou use um usuário existente).
+2. **Login**: clique em **Authorize** (cadeado no topo), preencha `username` com o **email** e `password` com a
+   senha e confirme. Client id/secret ficam vazios.
+3. Rotas com cadeado passam a enviar `Authorization: Bearer <token>` sozinhas. Teste com `GET /api/v1/auth/me`.
+4. Para sair, **Authorize** → **Logout**.
+
+O token também pode ser obtido em `POST /api/v1/auth/login` (JSON, usado pelo frontend). Todos os erros
+seguem `{{"code", "message", "details"}}`.{demo}"""
+
+
 async def _init_vector_repository(settings: Settings) -> VectorRepository:
     repository = VectorRepository(create_qdrant_client(settings), settings.EMBEDDING_DIM)
     try:
@@ -92,11 +123,24 @@ def create_app(settings: Settings | None = None, *, with_lifespan: bool = True) 
     settings = settings or get_settings()
     setup_logging(settings.LOG_LEVEL)
 
+    docs_enabled = settings.APP_ENV != "production"
     app = FastAPI(
         title=settings.APP_NAME,
         version="1.0.0",
-        description="Backend do MedFlux - Health & Wellness: autenticação, triagem com IA, agentes e mapa de unidades.",
+        description=_api_description(settings),
+        openapi_tags=OPENAPI_TAGS,
         lifespan=lifespan if with_lifespan else None,
+        # Swagger/ReDoc só fora de produção: em produção o contrato não fica público.
+        docs_url="/docs" if docs_enabled else None,
+        redoc_url="/redoc" if docs_enabled else None,
+        openapi_url="/openapi.json" if docs_enabled else None,
+        swagger_ui_parameters={
+            "persistAuthorization": True,
+            "displayRequestDuration": True,
+            "tryItOutEnabled": True,
+            "docExpansion": "list",
+            "filter": True,
+        },
     )
     app.state.settings = settings
 

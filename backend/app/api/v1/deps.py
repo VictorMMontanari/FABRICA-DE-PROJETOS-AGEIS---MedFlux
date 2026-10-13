@@ -9,7 +9,7 @@ from typing import Annotated
 
 import jwt
 from fastapi import Depends, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -27,7 +27,14 @@ from app.services.triage_service import TriageService
 from app.services.user_service import UserService
 from app.services.vector_service import VectorService
 
-_bearer = HTTPBearer(auto_error=False, description="JWT obtido em /api/v1/auth/login")
+# OAuth2 "password flow": no Swagger, o botão Authorize pede email e senha e guarda o JWT sozinho.
+# Para qualquer outro cliente é só o header padrão `Authorization: Bearer <token>`.
+_oauth2 = OAuth2PasswordBearer(
+    tokenUrl=f"{Settings.model_fields['API_V1_PREFIX'].default}/auth/token",
+    scheme_name="JWT",
+    description="Informe o email no campo username e a senha. Client id/secret ficam em branco.",
+    auto_error=False,
+)
 
 
 def get_settings_dep(request: Request) -> Settings:
@@ -46,12 +53,12 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 async def get_current_user(
     db: DbSession,
     settings: SettingsDep,
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    token: Annotated[str | None, Depends(_oauth2)],
 ) -> User:
-    if credentials is None or credentials.scheme.lower() != "bearer":
+    if not token:
         raise UnauthorizedError("Não autenticado.")
     try:
-        payload = decode_access_token(credentials.credentials, settings)
+        payload = decode_access_token(token, settings)
     except jwt.PyJWTError as exc:
         raise UnauthorizedError("Token inválido ou expirado.", code="invalid_token") from exc
     user = await UserRepository(db).get_by_id(str(payload["sub"]))

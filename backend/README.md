@@ -13,6 +13,7 @@ clínico e mapa de unidades de saúde (UPA/UBS) de Marília/SP.
 - [Como rodar localmente (sem Docker para a API)](#como-rodar-localmente-sem-docker-para-a-api)
 - [Configuração do .env](#configuração-do-env)
 - [Migrations (Alembic)](#migrations-alembic)
+- [Testar autenticação no Swagger](#testar-autenticação-no-swagger)
 - [Endpoints](#endpoints)
 - [Exemplos de payload](#exemplos-de-payload)
 - [Triagem, agentes e OpenRouter](#triagem-agentes-e-openrouter)
@@ -185,6 +186,33 @@ alembic upgrade head --sql                            # mostra o SQL sem executa
 A migration inicial (`0001`) cria as 7 tabelas e insere as 4 unidades de saúde exibidas no mapa.
 No Docker, `alembic upgrade head` roda automaticamente ao iniciar o backend.
 
+## Testar autenticação no Swagger
+
+Com a API no ar, abra **http://localhost:5000/docs** (disponível fora de `APP_ENV=production`).
+
+1. **Cadastro** (opcional): `POST /api/v1/auth/register` → *Try it out* → edite o JSON → *Execute* → `201`.
+2. **Login**: clique em **Authorize** (cadeado no topo). Em `username` vai o **email**, em `password` a senha.
+   Client id/secret ficam vazios. Clique em *Authorize*.
+3. Os endpoints com cadeado passam a enviar `Authorization: Bearer <token>` sozinhos. Teste com
+   `GET /api/v1/auth/me` → `200`.
+4. Para ver o `401`: **Authorize** → *Logout* e execute `GET /api/v1/auth/me` de novo.
+
+A autorização fica salva no navegador (`persistAuthorization`), então recarregar a página não desloga.
+O botão usa `POST /api/v1/auth/token` (padrão OAuth2), que chama o mesmo serviço de login do frontend
+(mesma validação e mesmo rate limit).
+
+**Inserir um usuário direto no MySQL** (ex.: para testes manuais). A senha precisa estar em bcrypt:
+
+```bash
+HASH=$(docker compose exec -T backend python -c "from app.core.security import hash_password; print(hash_password('Teste@123'))" | tr -d '')
+docker compose exec -T mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' <<SQL
+INSERT INTO users (id, name, email, password_hash, city, is_active, is_admin, created_at, updated_at)
+VALUES (UUID(), 'Usuário Teste', 'teste@medflux.com', '$HASH', 'Marília, SP', 1, 0, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6));
+SQL
+```
+
+Depois é só fazer login com `teste@medflux.com` / `Teste@123` pelo **Authorize**.
+
 ## Endpoints
 
 Base: `http://localhost:5000/api/v1`. 🔒 = exige `Authorization: Bearer <token>`.
@@ -192,7 +220,8 @@ Base: `http://localhost:5000/api/v1`. 🔒 = exige `Authorization: Bearer <token
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | POST | `/auth/register` | — | Cadastro; devolve a sessão (`token` + `user`) |
-| POST | `/auth/login` | — | Login; devolve a sessão |
+| POST | `/auth/login` | — | Login (JSON); devolve a sessão |
+| POST | `/auth/token` | — | Login OAuth2 (form `username`=email, `password`), usado pelo Swagger |
 | GET | `/auth/me` | 🔒 | Usuário do token |
 | GET | `/users/me` | 🔒 | Perfil (com URL pré-assinada da foto) |
 | PUT | `/users/me` | 🔒 | Atualiza nome, email e/ou cidade |
