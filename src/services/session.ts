@@ -46,3 +46,23 @@ export function clearStoredSession() {
   window.localStorage.removeItem(STORAGE_KEY)
   window.sessionStorage.removeItem(STORAGE_KEY)
 }
+
+const SESSION_EVENT = 'medflux:session'
+
+/** Atualiza o usuário salvo na sessão (mantém o token e o local de armazenamento escolhido no login). */
+export function updateStoredUser(user: UserProfile) {
+  const session = getStoredSession()
+  if (!session || !canUseStorage()) {
+    return
+  }
+
+  const persisted = window.localStorage.getItem(STORAGE_KEY) !== null
+  saveStoredSession({ ...session, user: { ...session.user, ...user } }, persisted)
+  window.dispatchEvent(new Event(SESSION_EVENT))
+}
+
+/** Avisa quando o usuário salvo muda (ex.: perfil editado), para o cabeçalho se atualizar. */
+export function onStoredUserChange(callback: () => void) {
+  window.addEventListener(SESSION_EVENT, callback)
+  return () => window.removeEventListener(SESSION_EVENT, callback)
+}

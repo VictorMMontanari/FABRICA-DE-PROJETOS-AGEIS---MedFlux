@@ -40,7 +40,7 @@ export function ChatTriagePage() {
       id: 'welcome-1',
       role: 'assistant',
       content:
-        'Olá, Marina. Sou a Clara, sua assistente de saúde. Conte quais sintomas você está sentindo e vou te orientar com a triagem inicial.',
+        `Olá, ${session?.user.name.split(' ')[0] ?? ''}. Sou a Clara, sua assistente de saúde. Conte quais sintomas você está sentindo e vou te orientar com a triagem inicial.`,
       timestamp: 'Agora',
     },
   ])

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BrandMark } from './BrandMark'
 import { SiteFooter } from './SiteFooter'
-import { clearStoredSession, getStoredSession } from '../services/session'
+import { UserAvatar } from './UserAvatar'
+import { clearStoredSession, getStoredSession, onStoredUserChange } from '../services/session'
 
 const NAV_ITEMS = [
   { label: 'Início', to: '/dashboard', end: true },
@@ -14,9 +15,10 @@ const NAV_ITEMS = [
 
 export function ShellLayout() {
   const location = useLocation()
-  const session = getStoredSession()
-  const user = session?.user
+  const [user, setUser] = useState(() => getStoredSession()?.user)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  useEffect(() => onStoredUserChange(() => setUser(getStoredSession()?.user)), [])
 
   useEffect(() => {
     setMobileMenuOpen(false)
@@ -65,13 +67,13 @@ export function ShellLayout() {
             <button type="button" className="icon-button header-actions__desktop-only" aria-label="Notificações">
               <Bell size={18} />
             </button>
-            <div className="profile-chip header-actions__desktop-only">
-              <div className="profile-chip__avatar">{user?.avatarInitials ?? 'MS'}</div>
+            <Link to="/perfil" className="profile-chip header-actions__desktop-only" aria-label="Meu perfil">
+              <UserAvatar user={user} />
               <div className="profile-chip__meta">
-                <strong>{user?.name ?? 'Marina Santos'}</strong>
-                <span>{user?.city ?? 'Marília, SP'}</span>
+                <strong>{user?.name}</strong>
+                <span>{user?.city}</span>
               </div>
-            </div>
+            </Link>
             <button
               type="button"
               className="icon-button header-actions__desktop-only"
@@ -129,13 +131,13 @@ export function ShellLayout() {
                 <Bell size={16} />
                 Notificações
               </button>
-              <div className="mobile-menu-panel__profile">
-                <div className="profile-chip__avatar">{user?.avatarInitials ?? 'MS'}</div>
+              <Link to="/perfil" className="mobile-menu-panel__profile" aria-label="Meu perfil">
+                <UserAvatar user={user} />
                 <div className="profile-chip__meta">
-                  <strong>{user?.name ?? 'Marina Santos'}</strong>
-                  <span>{user?.city ?? 'Marília, SP'}</span>
+                  <strong>{user?.name}</strong>
+                  <span>{user?.city}</span>
                 </div>
-              </div>
+              </Link>
               <button
                 type="button"
                 className="mobile-menu-panel__action mobile-menu-panel__action--danger"

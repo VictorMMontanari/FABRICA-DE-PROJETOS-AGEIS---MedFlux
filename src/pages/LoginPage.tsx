@@ -32,8 +32,8 @@ export function LoginPage() {
       saveStoredSession(response, remember)
 
       navigate('/dashboard', { replace: true })
-    } catch {
-      setError('Não foi possível autenticar agora. Tente novamente.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível autenticar agora. Tente novamente.')
     } finally {
       setIsLoading(false)
     }

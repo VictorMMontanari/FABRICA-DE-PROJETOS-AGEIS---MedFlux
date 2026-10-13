@@ -1,9 +1,18 @@
-import { getStoredSession } from './session'
+import { clearStoredSession, getStoredSession } from './session'
 
 export type UserProfile = {
+  id?: string
   name: string
+  email?: string
   city: string
   avatarInitials?: string
+  avatar_url?: string | null
+}
+
+export type UserUpdateRequest = {
+  name?: string
+  email?: string
+  city?: string
 }
 
 export type LoginResponse = {
@@ -137,23 +146,55 @@ function buildUrl(path: string) {
   return `${API_BASE_URL}${path}`
 }
 
+/** Erro devolvido pela API (`status` 0 = servidor inacessível). `message` já vem pronta para a tela. */
+export class ApiError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
+const OFFLINE_MESSAGE = 'Não foi possível conectar ao servidor. Tente novamente.'
+
+async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = getStoredSession()?.token
+  const headers = new Headers(init.headers)
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+  if (typeof init.body === 'string') {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  let response: Response
+  try {
+    response = await fetch(buildUrl(path), { ...init, headers })
+  } catch {
+    throw new ApiError(0, OFFLINE_MESSAGE)
+  }
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    // Token expirado ou inválido: encerra a sessão e volta para o login.
+    if (response.status === 401 && token) {
+      clearStoredSession()
+      window.location.assign('/login')
+    }
+    throw new ApiError(response.status, data?.message ?? 'Não foi possível concluir a ação agora.')
+  }
+
+  return data as T
+}
+
 async function requestJson<T>(path: string, options: RequestOptions, fallback: () => T): Promise<T> {
   try {
-    const token = getStoredSession()?.token
-    const response = await fetch(buildUrl(path), {
+    return await apiFetch<T>(path, {
       method: options.method ?? 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
       body: options.body ? JSON.stringify(options.body) : undefined,
     })
-
-    if (!response.ok) {
-      throw new Error(`Request failed with ${response.status}`)
-    }
-
-    return (await response.json()) as T
   } catch {
     return fallback()
   }
@@ -197,42 +238,43 @@ function buildFallbackRecommendation(message: string): TriageRecommendation | nu
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
-  return requestJson<LoginResponse>(
-    '/auth/login',
-    {
+  try {
+    return await apiFetch<LoginResponse>('/auth/login', {
       method: 'POST',
-      body: { email, password },
-    },
-    () => ({
-      token: 'mock-medflux-token',
-      user: MOCK_USER,
-    }),
-  )
+      body: JSON.stringify({ email, password }),
+    })
+  } catch (error) {
+    // Modo demonstração apenas com o backend desligado. Senha errada (401) e demais erros vão para a tela.
+    if (error instanceof ApiError && error.status === 0) {
+      return { token: 'mock-medflux-token', user: MOCK_USER }
+    }
+    throw error
+  }
 }
 
 // Sem fallback mock: um cadastro falso enganaria o usuário. Erros do servidor viram mensagem na tela.
 export async function register(payload: RegisterRequest): Promise<LoginResponse> {
-  let response: Response
+  return apiFetch<LoginResponse>('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
 
-  try {
-    response = await fetch(buildUrl('/auth/register'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-  } catch {
-    throw new Error('Não foi possível conectar ao servidor. Tente novamente.')
-  }
+export async function getMyProfile(): Promise<UserProfile> {
+  return apiFetch<UserProfile>('/users/me')
+}
 
-  const data = await response.json().catch(() => null)
+export async function updateMyProfile(payload: UserUpdateRequest): Promise<UserProfile> {
+  return apiFetch<UserProfile>('/users/me', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
 
-  if (!response.ok) {
-    throw new Error(data?.message ?? 'Não foi possível criar sua conta agora.')
-  }
-
-  return data as LoginResponse
+export async function uploadAvatar(file: File): Promise<void> {
+  const form = new FormData()
+  form.append('file', file)
+  await apiFetch('/users/me/avatar', { method: 'POST', body: form })
 }
 
 export async function getTriageHistory(): Promise<TriageHistoryItem[]> {
@@ -264,8 +306,4 @@ export async function sendTriageMessage(
 
 export async function getHealthUnits(): Promise<HealthUnit[]> {
   return requestJson<HealthUnit[]>('/health/units', { method: 'GET' }, () => MOCK_HEALTH_UNITS)
-}
-
-export function getMockUserProfile() {
-  return MOCK_USER
 }

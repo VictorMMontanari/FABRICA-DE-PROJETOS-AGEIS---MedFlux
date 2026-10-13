@@ -1,13 +1,14 @@
 import { ArrowRight, BrainCircuit, MapPinned, Stethoscope } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { getMockUserProfile, getTriageHistory, type TriageHistoryItem } from '../services/api'
+import { getTriageHistory, type TriageHistoryItem } from '../services/api'
+import { getStoredSession } from '../services/session'
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [history, setHistory] = useState<TriageHistoryItem[]>([])
-  const user = getMockUserProfile()
+  const firstName = getStoredSession()?.user.name.split(' ')[0] ?? ''
 
   useEffect(() => {
     let isMounted = true
@@ -38,8 +39,8 @@ export function DashboardPage() {
     <div className="dashboard-page">
       <section className="dashboard-hero">
         <div>
-          <h1>Olá, {user.name.split(' ')[0]} 👋</h1>
-          <p>Seja bem-vinda ao MedFlux, escolha a opção que deseja.</p>
+          <h1>Olá, {firstName} 👋</h1>
+          <p>Boas-vindas ao MedFlux, escolha a opção que deseja.</p>
         </div>
       </section>
 

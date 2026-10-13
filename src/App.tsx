@@ -5,6 +5,7 @@ import { ChatTriagePage } from './pages/ChatTriagePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { MapPage } from './pages/MapPage'
+import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
 import './App.css'
 
@@ -20,6 +21,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/chat" element={<ChatTriagePage />} />
             <Route path="/map" element={<MapPage />} />
+            <Route path="/perfil" element={<ProfilePage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
