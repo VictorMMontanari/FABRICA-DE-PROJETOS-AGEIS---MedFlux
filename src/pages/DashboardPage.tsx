@@ -1,22 +1,49 @@
-import { ArrowRight, BrainCircuit, MapPinned, Stethoscope } from 'lucide-react'
+import { ArrowRight, BrainCircuit, MapPinned, Stethoscope, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { getMockUserProfile, getTriageHistory, type TriageHistoryItem } from '../services/api'
+import { deleteConversation, getErrorMessage, getTriageHistory, type TriageHistoryItem } from '../services/api'
+import { getStoredSession } from '../services/session'
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [history, setHistory] = useState<TriageHistoryItem[]>([])
-  const user = getMockUserProfile()
+  const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const user = getStoredSession()?.user
+  const firstName = user?.name.split(' ')[0] ?? 'Paciente'
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function handleDelete(item: TriageHistoryItem) {
+    if (!window.confirm(`Apagar a conversa "${item.title}"? Essa ação não pode ser desfeita.`)) {
+      return
+    }
+    setDeletingId(item.id)
+    setHistoryError(null)
+    try {
+      await deleteConversation(item.id)
+      setHistory((current) => current.filter((entry) => entry.id !== item.id))
+    } catch (error) {
+      setHistoryError(getErrorMessage(error))
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   useEffect(() => {
     let isMounted = true
 
-    getTriageHistory().then((items) => {
-      if (isMounted) {
+    getTriageHistory()
+      .then((items) => {
+        if (!isMounted) return
         setHistory(items)
-      }
-    })
+        setHistoryState('ready')
+      })
+      .catch((error: unknown) => {
+        if (!isMounted) return
+        setHistoryError(getErrorMessage(error))
+        setHistoryState('error')
+      })
 
     return () => {
       isMounted = false
@@ -38,8 +65,8 @@ export function DashboardPage() {
     <div className="dashboard-page">
       <section className="dashboard-hero">
         <div>
-          <h1>Olá, {user.name.split(' ')[0]} 👋</h1>
-          <p>Seja bem-vinda ao MedFlux, escolha a opção que deseja.</p>
+          <h1>Olá, {firstName} 👋</h1>
+          <p>Boas-vindas ao MedFlux, escolha a opção que deseja.</p>
         </div>
       </section>
 
@@ -54,7 +81,7 @@ export function DashboardPage() {
             <MapPinned size={14} />
             Mapa Interativo
           </div>
-          <p className="dashboard-card__meta">• 12 clínicas próximas abertas</p>
+          <p className="dashboard-card__meta">• UBS e UPAs ordenadas pela distância</p>
           <h2 className="dashboard-card__title">Explore nosso mapa com as clínicas mais próximas</h2>
           <p className="dashboard-card__description">
             Veja unidades de saúde, locais de atenção básica e pontos de atendimento de urgência em um mapa pronto para uso.
@@ -126,15 +153,37 @@ export function DashboardPage() {
 
       <section className="page-card dashboard-card">
         <div className="history-list">
+          {historyState === 'loading' ? <p className="section-subtitle">Carregando histórico...</p> : null}
+          {historyState === 'error' || historyError ? <div className="error-banner">{historyError}</div> : null}
+          {historyState === 'ready' && history.length === 0 ? (
+            <p className="section-subtitle">
+              Você ainda não fez nenhuma triagem. Clique em “Iniciar Conversa” para falar com a Clara.
+            </p>
+          ) : null}
           {history.map((item) => (
             <article key={item.id} className="history-item">
               <div className="history-item__meta">
                 <strong>{item.title}</strong>
                 <p>{item.description}</p>
               </div>
-              <button type="button" className="primary-button history-item__action" onClick={() => navigate(item.route)}>
-                Continuar sua conversa <ArrowRight size={16} />
-              </button>
+              <div className="history-item__buttons">
+                <button type="button" className="primary-button history-item__action" onClick={() => navigate(item.route)}>
+                  Continuar sua conversa <ArrowRight size={16} />
+                </button>
+                <div className="exbutton">
+                  <button
+                    type="button"
+                    className="icon-button history-item__delete"
+                    aria-label={`Apagar conversa ${item.title}`}
+                    title="Apagar conversa"
+                    disabled={deletingId === item.id}
+                    onClick={() => void handleDelete(item)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+              </div>
             </article>
           ))}
         </div>

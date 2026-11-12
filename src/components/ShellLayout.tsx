@@ -2,6 +2,7 @@ import { Bell, LogOut, Menu, Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BrandMark } from './BrandMark'
+import { ProfileModal } from './ProfileModal'
 import { SiteFooter } from './SiteFooter'
 import { clearStoredSession, getStoredSession } from '../services/session'
 
@@ -14,13 +15,28 @@ const NAV_ITEMS = [
 
 export function ShellLayout() {
   const location = useLocation()
-  const session = getStoredSession()
+  const [session, setSession] = useState(getStoredSession)
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const user = session?.user
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname, location.hash])
+    function handleSessionUpdate() {
+      setSession(getStoredSession())
+    }
+    window.addEventListener('medflux:session-updated', handleSessionUpdate)
+    return () => {
+      window.removeEventListener('medflux:session-updated', handleSessionUpdate)
+    }
+  }, [])
+
+  // o menu fica aberto apenas na rota em que foi aberto: navegar o fecha automaticamente
+  const currentLocation = `${location.pathname}${location.hash}`
+  const [menuOpenedAt, setMenuOpenedAt] = useState<string | null>(null)
+  const mobileMenuOpen = menuOpenedAt === currentLocation
+
+  function toggleMobileMenu() {
+    setMenuOpenedAt(mobileMenuOpen ? null : currentLocation)
+  }
 
   function handleLogout() {
     clearStoredSession()
@@ -65,13 +81,25 @@ export function ShellLayout() {
             <button type="button" className="icon-button header-actions__desktop-only" aria-label="Notificações">
               <Bell size={18} />
             </button>
-            <div className="profile-chip header-actions__desktop-only">
-              <div className="profile-chip__avatar">{user?.avatarInitials ?? 'MS'}</div>
+            <button
+              type="button"
+              className="profile-chip profile-chip--clickable header-actions__desktop-only"
+              onClick={() => setIsProfileModalOpen(true)}
+              title="Meu Perfil"
+              aria-label="Abrir meu perfil"
+            >
+              <div className="profile-chip__avatar">
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.name} className="profile-chip__img" />
+                ) : (
+                  user?.avatarInitials ?? 'MS'
+                )}
+              </div>
               <div className="profile-chip__meta">
                 <strong>{user?.name ?? 'Marina Santos'}</strong>
                 <span>{user?.city ?? 'Marília, SP'}</span>
               </div>
-            </div>
+            </button>
             <button
               type="button"
               className="icon-button header-actions__desktop-only"
@@ -86,7 +114,7 @@ export function ShellLayout() {
               aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu-panel"
-              onClick={() => setMobileMenuOpen((current) => !current)}
+              onClick={toggleMobileMenu}
             >
               {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -129,13 +157,27 @@ export function ShellLayout() {
                 <Bell size={16} />
                 Notificações
               </button>
-              <div className="mobile-menu-panel__profile">
-                <div className="profile-chip__avatar">{user?.avatarInitials ?? 'MS'}</div>
+              <button
+                type="button"
+                className="mobile-menu-panel__profile profile-chip--clickable"
+                onClick={() => {
+                  setMenuOpenedAt(null)
+                  setIsProfileModalOpen(true)
+                }}
+                title="Meu Perfil"
+              >
+                <div className="profile-chip__avatar">
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="profile-chip__img" />
+                  ) : (
+                    user?.avatarInitials ?? 'MS'
+                  )}
+                </div>
                 <div className="profile-chip__meta">
                   <strong>{user?.name ?? 'Marina Santos'}</strong>
                   <span>{user?.city ?? 'Marília, SP'}</span>
                 </div>
-              </div>
+              </button>
               <button
                 type="button"
                 className="mobile-menu-panel__action mobile-menu-panel__action--danger"
@@ -152,6 +194,8 @@ export function ShellLayout() {
       <main className="content-frame page-shell">
         <Outlet />
       </main>
+
+      <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
 
       <SiteFooter />
     </div>

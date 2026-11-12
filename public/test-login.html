@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Login Helper</title></head>
+<body>
+<script>
+localStorage.setItem('medflux.session', JSON.stringify({
+  token: 'mock-session-test',
+  user: {
+    id: 'usr-1',
+    name: 'Marina Santos',
+    city: 'Marília, SP',
+    email: 'marina.santos@medflux.com',
+    avatarInitials: 'MS',
+    avatarUrl: null
+  }
+}));
+window.location.href = '/dashboard';
+</script>
+</body>
+</html>
